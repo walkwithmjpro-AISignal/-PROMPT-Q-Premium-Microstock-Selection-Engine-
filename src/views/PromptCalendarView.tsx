@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Target, PlusSquare, Image, RefreshCw, Copy, CheckCircle, Tag, TrendingUp, Filter, BarChart, ShoppingBag, Search, Compass, BookOpen, Layers, Lightbulb, Map, Wand2, X, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { Calendar, Target, PlusSquare, Image, RefreshCw, Copy, CheckCircle, Tag, TrendingUp, Filter, BarChart, ShoppingBag, Search, Compass, BookOpen, Layers, Lightbulb, Map, Wand2, X, ChevronDown, ChevronRight, Check, Settings } from 'lucide-react';
 import { AssetFormat, MarketPriority, CalendarEvent, GeneratedPrompt } from '../types';
 import { getRelevantEvents, generatePrompts, getAllEvents } from '../services/calendarEngine';
 import { useAppContext } from '../store';
@@ -19,7 +19,7 @@ const ASSET_GROUPS = [
   },
   {
     name: 'VECTOR GRID',
-    formats: ['Vector - Grid 1x1', 'Vector - Grid 2x2', 'Vector - Grid 3x3', 'Vector - Grid 4x4'] as AssetFormat[]
+    formats: ['Vector - Grid 1x1', 'Vector - Grid 3x3', 'Vector - Grid 4x4'] as AssetFormat[]
   }
 ];
 
@@ -46,7 +46,6 @@ const TIME_RANGES = [
 ];
 
 const MANUAL_MODES = [
-  { id: 'auto', label: 'Auto Calendar Generation' },
   { id: 'researcher', label: 'Trend Researcher' },
   { id: 'niche', label: 'Niche Finder' },
   { id: 'planner', label: 'Content Planner' },
@@ -54,6 +53,7 @@ const MANUAL_MODES = [
 ];
 
 type EngineMode = 'auto' | 'researcher' | 'niche' | 'planner' | 'holiday';
+export type SelectionStyle = 'Chips' | 'Radio' | 'Checkbox' | 'Toggle';
 
 export const PromptCalendarView = () => {
   const { showToast } = useAppContext();
@@ -62,10 +62,18 @@ export const PromptCalendarView = () => {
 
   // Global State
   const [selectedFormat, setSelectedFormat] = useState<AssetFormat>('Sticker');
-  const [activeMode, setActiveMode] = useState<EngineMode>('auto');
+  const [activeMode, setActiveMode] = useState<EngineMode>('researcher'); // Changed default per instructions
   const [timeRange, setTimeRange] = useState<string>('This Month');
   const [marketFocus, setMarketFocus] = useState<string[]>(['Global']);
   
+  const [selectionStyle, setSelectionStyle] = useState<SelectionStyle>(() => {
+    return (localStorage.getItem('prompt_cal_style') as SelectionStyle) || 'Chips';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('prompt_cal_style', selectionStyle);
+  }, [selectionStyle]);
+
   // Toggles State
   const [autoFillActive, setAutoFillActive] = useState(true);
   const [todayTrendFirst, setTodayTrendFirst] = useState(false);
@@ -416,6 +424,109 @@ Main Prompt: ${p.mainPrompt}${negPart}`;
     );
   };
 
+  const UniversalOption: React.FC<{
+    label: string;
+    isSelected?: boolean;
+    onClick: () => void;
+    style: SelectionStyle;
+    isAction?: boolean;
+  }> = ({ label, isSelected, onClick, style, isAction }) => {
+    
+    if (isAction) {
+      if (style === 'Chips') {
+        return (
+          <button
+            onClick={onClick}
+            className="px-3.5 py-1.5 text-[11px] font-semibold rounded-full border transition-all bg-indigo-500/10 text-indigo-400 border-indigo-500/30 hover:bg-indigo-500/20 active:scale-[0.98]"
+          >
+            {label}
+          </button>
+        );
+      }
+      return (
+        <div onClick={onClick} className="flex items-center gap-3 cursor-pointer group p-2 hover:bg-slate-800/70 rounded-lg transition-colors border border-transparent">
+          <div className="w-4 h-4 flex items-center justify-center shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 group-hover:bg-indigo-400 transition-colors" />
+          </div>
+          <span className="text-xs font-bold text-indigo-400 group-hover:text-indigo-300 transition-colors uppercase tracking-wider">{label}</span>
+        </div>
+      );
+    }
+
+    if (style === 'Chips') {
+      return (
+        <button
+          onClick={onClick}
+          className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full border transition-all ${isSelected ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20 scale-[1.02]' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200 hover:bg-slate-900'}`}
+        >
+          {label}
+        </button>
+      );
+    }
+
+    if (style === 'Radio') {
+      return (
+        <div onClick={onClick} className="flex items-center gap-3 cursor-pointer group p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-transparent hover:border-slate-700/50">
+          <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all shrink-0 ${isSelected ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-600 group-hover:border-slate-400 bg-slate-950'}`}>
+            {isSelected && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
+          </div>
+          <span className={`text-[11px] font-medium transition-colors ${isSelected ? 'text-indigo-400 font-bold' : 'text-slate-400 group-hover:text-slate-300'}`}>{label}</span>
+        </div>
+      );
+    }
+
+    if (style === 'Checkbox') {
+      return (
+        <div onClick={onClick} className="flex items-start gap-2.5 cursor-pointer group p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-transparent hover:border-slate-700/50">
+          <div className={`w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all shrink-0 ${isSelected ? 'border-indigo-500 bg-indigo-500' : 'border-slate-600 bg-slate-950 group-hover:border-slate-400'}`}>
+            {isSelected && <Check size={10} className="text-white" strokeWidth={3} />}
+          </div>
+          <span className={`text-[11px] transition-colors leading-tight mt-0.5 ${isSelected ? 'text-slate-200 font-bold' : 'text-slate-400 font-medium group-hover:text-slate-300'}`}>{label}</span>
+        </div>
+      );
+    }
+
+    if (style === 'Toggle') {
+      return (
+        <div className="flex items-center justify-between group cursor-pointer p-2 hover:bg-slate-800/50 rounded-lg transition-colors border border-transparent hover:border-slate-700/50" onClick={onClick}>
+          <span className={`text-[11px] font-bold transition-colors ${isSelected ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-300'}`}>{label}</span>
+          <div className={`w-[28px] h-[16px] rounded-full p-[2px] transition-colors relative flex items-center shrink-0 ${isSelected ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+             <div className={`w-3 h-3 rounded-full bg-white transition-all shadow-sm ${isSelected ? 'translate-x-[12px]' : 'translate-x-0'}`} />
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const OptionGroup: React.FC<{ children: React.ReactNode, style: SelectionStyle }> = ({ children, style }) => {
+    if (style === 'Chips') {
+      return <div className="flex flex-wrap gap-2">{children}</div>;
+    }
+    return <div className="flex flex-col gap-0.5">{children}</div>;
+  };
+
+  const Collapsible: React.FC<{ title: string; children: React.ReactNode, isExpandedDefault?: boolean }> = ({ title, children, isExpandedDefault = true }) => {
+    const [isExpanded, setIsExpanded] = useState(isExpandedDefault);
+    return (
+      <div className="border border-slate-800 bg-slate-900/50 rounded-xl overflow-hidden shrink-0 shadow-sm">
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full flex items-center gap-2 p-4 text-[10px] font-bold text-slate-400 hover:text-slate-200 transition-colors bg-slate-900 uppercase"
+        >
+          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {title}
+        </button>
+        {isExpanded && (
+          <div className="p-4 border-t border-slate-800/50 bg-slate-900">
+            {children}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const ToggleSwitch = ({ label, checked, onChange }: { label: string, checked: boolean, onChange: (c: boolean) => void }) => (
     <div className="flex items-center justify-between group cursor-pointer" onClick={() => onChange(!checked)}>
        <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-300 transition-colors uppercase tracking-wide">{label}</span>
@@ -439,100 +550,108 @@ Main Prompt: ${p.mainPrompt}${negPart}`;
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Sidebar - Configuration Controls */}
-        <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6">
+        <div className="w-full lg:w-80 shrink-0 flex flex-col gap-5">
 
-          {/* 1. CHIPS - Active Asset Type */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-            <div className="text-xs font-bold text-slate-200 mb-5 flex items-center gap-2">
-              <Image size={16} className="text-indigo-400" /> Active Asset Type
-            </div>
-            <div className="flex flex-col gap-5">
-              {ASSET_GROUPS.map(group => (
-                <div key={group.name}>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mb-2.5 ml-1">{group.name}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.formats.map(f => (
-                      <button
-                        key={f}
-                        onClick={() => setSelectedFormat(f)}
-                        className={`px-3.5 py-1.5 text-[11px] font-semibold rounded-full border transition-all ${selectedFormat === f ? 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20 scale-[1.02]' : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200 hover:bg-slate-900'}`}
-                      >
-                        {f}
-                      </button>
-                    ))}
-                  </div>
+           {/* SELECTION STYLE SETTINGS */}
+           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm mb-1">
+             <div className="flex items-center justify-between mb-3">
+                <div className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                  <Settings size={14} className="text-indigo-400"/> Selection Style
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. RADIO BUTTONS - Manual Calendar Mode */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-              <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                <Layers size={16} className="text-emerald-400" /> Workflow Mode
-              </div>
-            </div>
-            <div className="p-5 flex flex-col gap-3.5 bg-slate-900">
-              {MANUAL_MODES.map(m => (
-                <label key={m.id} className="flex items-center gap-3 cursor-pointer group">
-                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${activeMode === m.id ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-600 group-hover:border-slate-400 bg-slate-950'}`}>
-                    {activeMode === m.id && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
-                  </div>
-                  <span className={`text-xs font-medium transition-colors ${activeMode === m.id ? 'text-indigo-400 font-bold' : 'text-slate-400 group-hover:text-slate-300'}`}>{m.label}</span>
-                  <input type="radio" className="hidden" checked={activeMode === m.id} onChange={() => { setActiveMode(m.id as EngineMode); setGeneratedPrompts([]); }} />
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* 2. RADIO BUTTONS - Time Range */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-             <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-              <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                <Calendar size={16} className="text-sky-400" /> Time Range
-              </div>
-            </div>
-            <div className="p-5 grid grid-cols-2 gap-y-3.5 gap-x-2 bg-slate-900">
-               {TIME_RANGES.map(tr => (
-                 <label key={tr} className="flex items-center gap-2.5 cursor-pointer group">
-                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all shrink-0 ${timeRange === tr ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-600 group-hover:border-slate-400 bg-slate-950'}`}>
-                    {timeRange === tr && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-                  </div>
-                  <span className={`text-[11px] transition-colors leading-tight ${timeRange === tr ? 'text-indigo-400 font-bold' : 'text-slate-400 font-medium group-hover:text-slate-300'}`}>{tr}</span>
-                  <input type="radio" className="hidden" checked={timeRange === tr} onChange={() => setTimeRange(tr)} />
-                </label>
+             </div>
+             <div className="grid grid-cols-2 gap-2">
+               {['Chips', 'Radio', 'Checkbox', 'Toggle'].map(s => (
+                 <button 
+                   key={s} 
+                   onClick={() => setSelectionStyle(s as SelectionStyle)}
+                   className={`py-1.5 px-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-colors border ${selectionStyle === s ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-slate-300 hover:border-slate-700'}`}
+                 >
+                   {s}
+                 </button>
                ))}
-            </div>
-          </div>
+             </div>
+           </div>
 
-          {/* 3. CHECKBOXES - Market Focus */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-             <div className="p-4 border-b border-slate-800 bg-slate-900/50">
-              <div className="text-xs font-bold text-slate-200 flex items-center gap-2">
-                <Map size={16} className="text-rose-400" /> Market Focus
-              </div>
-            </div>
-            <div className="p-5 grid grid-cols-2 gap-y-3.5 gap-x-2 bg-slate-900">
-               {MARKETS.map(mf => {
-                 const checked = marketFocus.includes(mf);
-                 return (
-                 <label key={mf} className="flex items-start gap-2.5 cursor-pointer group">
-                  <div className={`w-4 h-4 rounded border mt-0.5 flex items-center justify-center transition-all shrink-0 ${checked ? 'border-indigo-500 bg-indigo-500' : 'border-slate-600 bg-slate-950 group-hover:border-slate-400'}`}>
-                    {checked && <Check size={10} className="text-white" strokeWidth={3} />}
-                  </div>
-                  <span className={`text-[11px] transition-colors leading-tight mt-0.5 ${checked ? 'text-slate-200 font-bold' : 'text-slate-400 font-medium group-hover:text-slate-300'}`}>{mf}</span>
-                  <input type="checkbox" className="hidden" checked={checked} onChange={() => {
-                      if (checked) {
-                        setMarketFocus(marketFocus.filter(m => m !== mf).length > 0 ? marketFocus.filter(m => m !== mf) : ['Global']); // ensure at least one
-                      } else {
-                        setMarketFocus([...marketFocus, mf]);
-                      }
-                  }} />
-                </label>
-               )})}
-            </div>
-          </div>
+          {ASSET_GROUPS.map(group => (
+            <Collapsible key={group.name} title={group.name}>
+              <OptionGroup style={selectionStyle}>
+                {group.formats.map(f => (
+                  <UniversalOption 
+                    key={f} 
+                    label={f} 
+                    style={selectionStyle} 
+                    isSelected={selectedFormat === f} 
+                    onClick={() => setSelectedFormat(f)} 
+                  />
+                ))}
+              </OptionGroup>
+            </Collapsible>
+          ))}
+
+          <Collapsible title="MANUAL CALENDAR">
+            <OptionGroup style={selectionStyle}>
+              {MANUAL_MODES.map(m => (
+                <UniversalOption 
+                  key={m.id} 
+                  label={m.label} 
+                  style={selectionStyle} 
+                  isSelected={activeMode === m.id} 
+                  onClick={() => { setActiveMode(m.id as EngineMode); setGeneratedPrompts([]); }} 
+                />
+              ))}
+            </OptionGroup>
+          </Collapsible>
+
+          <Collapsible title="TIME RANGE">
+            <OptionGroup style={selectionStyle}>
+              {TIME_RANGES.map(tr => (
+                <UniversalOption 
+                  key={tr} 
+                  label={tr} 
+                  style={selectionStyle} 
+                  isSelected={timeRange === tr} 
+                  onClick={() => setTimeRange(tr)} 
+                />
+              ))}
+            </OptionGroup>
+          </Collapsible>
+
+          <Collapsible title="MARKET FOCUS">
+            <OptionGroup style={selectionStyle}>
+              {MARKETS.map(mf => {
+                  const isSelected = marketFocus.includes(mf);
+                  return (
+                    <UniversalOption 
+                      key={mf} 
+                      label={mf} 
+                      style={selectionStyle} 
+                      isSelected={isSelected} 
+                      onClick={() => {
+                          if (isSelected) {
+                            setMarketFocus(marketFocus.filter(m => m !== mf).length > 0 ? marketFocus.filter(m => m !== mf) : ['Global']); // ensure at least one
+                          } else {
+                            setMarketFocus([...marketFocus, mf]);
+                          }
+                      }} 
+                    />
+                  );
+              })}
+            </OptionGroup>
+          </Collapsible>
+
+          <Collapsible title="ACTION">
+            <OptionGroup style={selectionStyle}>
+              <UniversalOption label="Auto Fill" style={selectionStyle} onClick={() => {
+                if (activeMode === 'researcher') handleTrendResearch();
+                else if (activeMode === 'niche') handleNicheFinder();
+              }} isAction />
+              <UniversalOption label="Clear" style={selectionStyle} onClick={handleClear} isAction />
+              <UniversalOption label="Generate Prompt" style={selectionStyle} onClick={handleGeneratePrompt} isAction />
+              <UniversalOption label="Generate Batch" style={selectionStyle} onClick={handleGenerateBatch} isAction />
+              <UniversalOption label="Add to Planner" style={selectionStyle} onClick={() => setActiveMode('planner')} isAction />
+              <UniversalOption label="Copy All Prompts" style={selectionStyle} onClick={handleCopyAll} isAction />
+            </OptionGroup>
+          </Collapsible>
 
         </div>
 
